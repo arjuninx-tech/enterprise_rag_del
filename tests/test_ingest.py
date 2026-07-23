@@ -1,6 +1,6 @@
 from unittest import TestCase
 
-from iso_assist.services.ingest import _split_text
+from onprem_rag.services.ingest import _split_text
 
 
 class TextChunkingTests(TestCase):

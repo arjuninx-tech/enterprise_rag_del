@@ -1,65 +1,36 @@
 # Roadmap
 
-This file tracks planned features and their status. Items are roughly ordered by priority within each version.
+The roadmap prioritizes trustworthy retrieval and safe on-premises operation.
+Items are ordered by expected user value rather than delivery date.
 
----
+## Retrieval quality
 
-## ✅ v1.0 — Shipped
+- Add a versioned evaluation dataset with expected source documents.
+- Measure retrieval recall, citation accuracy, and unsupported-answer rate.
+- Add optional hybrid search and local reranking.
+- Preserve page and heading metadata through ingestion.
+- Detect index incompatibility when the embedding model changes.
 
-- [x] Local RAG pipeline (ChromaDB + Ollama)
-- [x] PDF, DOCX, TXT document ingestion
-- [x] PyWebView and Flask chat UI with source citations
-- [x] Step-by-step animated status panel during queries
-- [x] Live progress bar during knowledge base rebuild
-- [x] Batch embeddings for fast ingestion (~32 chunks/call)
-- [x] Model selector (Qwen 3 8B / Qwen 2.5 7B / Gemma 3 4B / Llama 3.1 8B)
-- [x] Speed stats per response (time, token count, tok/s)
-- [x] Offline-first: skip model pull if already installed
-- [x] Model availability check with inline download button
-- [x] Windows launcher scripts (run.bat, stop.bat)
-- [x] Automated setup scripts (setup.bat, setup.sh)
+## Security and operations
 
----
+- Add authenticated multi-user browser deployment.
+- Encrypt local chat and attachment storage.
+- Add configurable retention and secure deletion.
+- Record administrative actions in an audit log.
+- Add rate limiting and background job controls.
 
-## 🚧 v1.1 — In Progress
+## Document lifecycle
 
-- [ ] **OCR support for scanned PDFs** — use Tesseract/pytesseract to extract text from image-based PDFs
-- [ ] **Document metadata display** — show document revision, effective date, and status alongside citations
-- [ ] **Confidence scoring** — display a retrieval confidence indicator so users know how well a question is covered
-- [ ] **Multi-language support** — test and document support for non-English document sets
-- [ ] **macOS/Linux launcher script** (run.sh)
+- Track document versions and index status.
+- Support incremental re-indexing and deletion.
+- Add OCR through an optional local processing pipeline.
+- Export answers and citations in portable formats.
 
----
+## Distribution
 
-## 📋 v1.2 — Planned
+- Add reproducible desktop builds for supported platforms.
+- Sign release artifacts and publish checksums.
+- Add a documented container deployment after authentication is available.
 
-- [ ] **Document version tracking** — detect when an existing document has been updated and flag stale chunks
-- [ ] **Incremental rebuild** — re-index only changed or new documents, not the entire corpus
-- [ ] **Clause coverage map** — visualise which ISO clauses have good document coverage vs. gaps
-- [ ] **Export conversation** — save Q&A sessions as PDF or Markdown with citations
-- [ ] **Persistent chat history** — retain conversations across browser refreshes using SQLite
-
----
-
-## 🔭 v2.0 — Future
-
-- [ ] **Multi-user deployment** — shared server mode with authentication and user sessions
-- [ ] **SharePoint / OneDrive sync** — automatically pull updated documents from cloud storage
-- [ ] **Non-conformance detection** — scan uploaded documents and flag clauses that appear underdeveloped or missing
-- [ ] **Audit trail** — log all queries, cited sources, and model used for traceability
-- [ ] **Audit Trail Export** — export query history as Excel/PDF for third-party audit evidence
-- [ ] **Custom system prompt editor** — let users adjust the assistant's tone, verbosity, and response format via the UI
-- [ ] **REST API** — expose the RAG pipeline as an API so other internal tools can query it
-- [ ] **ISO 45001 standard support** — dedicated prompt tuning for OHS management system documents
-- [ ] **ISO 13485 support** — medical device quality management
-- [ ] **IATF 16949 support** — automotive sector quality requirements
-
----
-
-## 💡 Community Suggestions
-
-Have an idea? Open a [feature request](../.github/ISSUE_TEMPLATE/feature_request.md) on GitHub.
-
----
-
-_Last updated: June 2026_
+Feature proposals should explain the user problem, privacy impact, operational
+cost, and how the behavior can be tested.

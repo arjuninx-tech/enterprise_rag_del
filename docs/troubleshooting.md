@@ -75,7 +75,7 @@ find . -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null
 
 ### "The knowledge base is empty" after uploading documents
 
-**Symptom:** You've added documents to `data/approved_documents/` but the assistant says it has no documents.
+**Symptom:** You've added documents to `data/documents/` but the assistant says it has no documents.
 
 **Fix:** Click **Rebuild Knowledge Base** in the sidebar. Documents are not indexed automatically — you must trigger a rebuild after adding or updating files.
 

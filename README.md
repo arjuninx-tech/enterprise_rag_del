@@ -1,13 +1,12 @@
 <div align="center">
 
-# Private RAG Workbench
+# On-Prem RAG Assistant
 
 ### A laptop-first document assistant powered by local LLMs and cited retrieval.
 
 Ask questions across PDFs, Word files, text, and Markdown without sending them
 to a hosted AI API.
 
-[![CI](https://github.com/arjuninx-tech/enterprise_rag_del/actions/workflows/ci.yml/badge.svg)](https://github.com/arjuninx-tech/enterprise_rag_del/actions/workflows/ci.yml)
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![Ollama](https://img.shields.io/badge/LLM-Ollama-black)](https://ollama.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -27,12 +26,10 @@ to a hosted AI API.
 - Runs as a native PyWebView window or in a browser
 - Includes an ISO 9001 sample use case, while remaining domain-agnostic
 
-![Chat interface answering from local documents](images/chat.png)
-
 ## Why this project
 
 Private policies, quality manuals, contracts, and operating procedures are often
-poor candidates for hosted AI services. Private RAG Workbench is an inspectable
+poor candidates for hosted AI services. On-Prem RAG Assistant is an inspectable
 reference implementation for applying a local model to those documents.
 
 Local execution is a useful privacy control, not a compliance certification.
@@ -99,20 +96,10 @@ Open <http://localhost:5000>. Browser mode listens only on `127.0.0.1` by
 default.
 
 Add documents through the Knowledge Base screen or place them in
-`data/approved_documents/`, then select **Rebuild Knowledge Base**.
+`data/documents/`, then select **Rebuild Knowledge Base**.
 
 Try the documents under [`examples/`](examples/) with the questions in
-[`examples/sample_questions.md`](examples/sample_questions.md).
-
-## Screenshots
-
-| Home | Knowledge base |
-|---|---|
-| ![New chat screen](images/home.png) | ![Knowledge base screen](images/knowledge.png) |
-
-| Indexing | Model selection |
-|---|---|
-| ![Knowledge base indexing](images/knoledge-building.png) | ![Model selector](images/models.png) |
+[`examples/sample-questions.md`](examples/sample-questions.md).
 
 ## Architecture
 
@@ -130,8 +117,6 @@ flowchart LR
     Ingest --> Ollama[Ollama]
     RAG --> Ollama
 ```
-
-See [architecture.md](docs/architecture.md) for more detail.
 
 ## Configuration
 
@@ -166,7 +151,7 @@ See [SECURITY.md](SECURITY.md) for reporting and deployment guidance.
 - Citations identify source chunks but are not a guarantee of answer correctness
 - No reranker or automated RAG evaluation suite yet
 - SQLite content and logs are not encrypted by the application
-- Desktop installers are experimental and not currently published as releases
+- Packaged desktop installers are not currently published
 
 ## Roadmap
 
@@ -185,8 +170,7 @@ Issues, test results on different hardware, retrieval improvements, and focused
 pull requests are welcome. Start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 If you are evaluating private document AI for a real organization and want to
-discuss implementation work, open a GitHub Discussion after Discussions are
-enabled or use the contact link on the maintainer's GitHub profile.
+discuss implementation work, open a GitHub Discussion in this repository.
 
 ## License
 

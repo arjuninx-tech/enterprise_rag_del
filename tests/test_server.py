@@ -2,7 +2,7 @@ from io import BytesIO
 from unittest import TestCase
 from uuid import uuid4
 
-from iso_assist.server import flask_app
+from onprem_rag.server import flask_app
 
 
 class ServerBoundaryTests(TestCase):

@@ -2,7 +2,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest import TestCase
 
-from iso_assist.services.document_loader import load_document
+from onprem_rag.services.document_loader import load_document
 
 
 class DocumentLoaderTests(TestCase):

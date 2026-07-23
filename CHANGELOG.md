@@ -11,6 +11,6 @@ All notable changes will be documented here.
 - Preserve original attachment filenames.
 - Add retrieval distance filtering, tests, CI, and community files.
 
-## [0.1.0] - TBD
+## [0.1.0] - 2026-07-23
 
 Initial public preview.

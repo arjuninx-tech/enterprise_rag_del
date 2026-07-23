@@ -1,6 +1,6 @@
 # Contributing
 
-Thank you for helping improve Private RAG Workbench.
+Thank you for helping improve On-Prem RAG Assistant.
 
 1. Open an issue before large architectural changes.
 2. Create a focused branch and keep unrelated changes separate.

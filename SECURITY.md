@@ -6,10 +6,9 @@ Security fixes are applied to the latest release on the default branch.
 
 ## Reporting a vulnerability
 
-Please do not open a public issue for a suspected vulnerability. Use GitHub's
-private vulnerability reporting feature after it is enabled for this repository.
-Until then, contact the maintainer privately through the contact method listed on
-their GitHub profile.
+Please do not open a public issue for a suspected vulnerability. Open the
+repository's **Security** tab and select **Report a vulnerability** to start a
+private report with the maintainers.
 
 Include the affected version, reproduction steps, impact, and any suggested
 mitigation. You should receive an acknowledgement within seven days.

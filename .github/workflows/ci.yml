@@ -31,4 +31,4 @@ jobs:
       - name: Test
         run: pytest -q
       - name: Verify package entry points
-        run: python -c "import iso_assist.config, iso_assist.server, iso_assist.desktop"
+        run: python -c "import onprem_rag.config, onprem_rag.server, onprem_rag.desktop"

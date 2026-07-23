@@ -1,18 +1,17 @@
 [build-system]
 requires = ["setuptools>=68"]
-build-backend = "setuptools.backends.legacy:build"
+build-backend = "setuptools.build_meta"
 
 [project]
-name = "private-rag-workbench"
+name = "onprem-rag-assistant"
 version = "0.1.0"
-description = "Laptop-first document assistant with local LLM inference and cited RAG"
+description = "Self-hosted document assistant with local LLM inference and cited RAG"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { file = "LICENSE" }
-authors = [{ name = "Project contributors" }]
 keywords = ["rag", "ollama", "local-llm", "document-ai", "privacy"]
 dependencies = [
-    "pywebview>=4.4.1,<6",
+    "pywebview>=4.4.1,<7",
     "ollama>=0.4,<1",
     "chromadb>=0.5,<2",
     "pdfplumber>=0.10,<1",
@@ -29,14 +28,14 @@ dev = [
 ]
 
 [project.scripts]
-iso-assist     = "iso_assist.desktop:main"
-iso-assist-web = "iso_assist.server:main"
+onprem-rag     = "onprem_rag.desktop:main"
+onprem-rag-web = "onprem_rag.server:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-iso_assist = ["ui/*.html"]
+onprem_rag = ["ui/*.html"]
 
 [tool.ruff]
 line-length = 100
