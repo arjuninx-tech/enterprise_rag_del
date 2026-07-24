@@ -324,16 +324,39 @@ def check_ollama_status():
 
 
 def get_kb_stats():
+    from onprem_rag.services.ingest import get_source_documents
+
+    source_documents = [path.name for path in get_source_documents()]
     try:
         collection = _get_collection()
         if collection is None:
-            return {"indexed": False, "chunk_count": 0, "documents": []}
+            return {
+                "indexed": False,
+                "chunk_count": 0,
+                "documents": [],
+                "source_documents": source_documents,
+            }
         count = collection.count()
         if count == 0:
-            return {"indexed": False, "chunk_count": 0, "documents": []}
+            return {
+                "indexed": False,
+                "chunk_count": 0,
+                "documents": [],
+                "source_documents": source_documents,
+            }
         all_meta = collection.get(include=["metadatas"])["metadatas"]
         doc_names = sorted({m.get("document_name", "?") for m in all_meta})
-        return {"indexed": True, "chunk_count": count, "documents": doc_names}
+        return {
+            "indexed": True,
+            "chunk_count": count,
+            "documents": doc_names,
+            "source_documents": source_documents,
+        }
     except Exception:
         reset_collection_cache()
-        return {"indexed": False, "chunk_count": 0, "documents": []}
+        return {
+            "indexed": False,
+            "chunk_count": 0,
+            "documents": [],
+            "source_documents": source_documents,
+        }

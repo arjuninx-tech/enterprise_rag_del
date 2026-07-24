@@ -31,3 +31,13 @@ class ServerBoundaryTests(TestCase):
             content_type="multipart/form-data",
         )
         self.assertEqual(response.status_code, 415)
+
+    def test_browser_brand_assets_are_served(self):
+        icon_response = self.client.get("/app-icon.svg")
+        favicon_response = self.client.get("/favicon.ico")
+        try:
+            self.assertEqual(icon_response.status_code, 200)
+            self.assertEqual(favicon_response.status_code, 200)
+        finally:
+            icon_response.close()
+            favicon_response.close()

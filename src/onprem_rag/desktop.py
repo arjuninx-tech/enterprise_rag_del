@@ -41,7 +41,7 @@ from onprem_rag.models.attachment_store import (
     remove_document,
     clear_documents,
 )
-from onprem_rag.services.ingest import rebuild_index
+from onprem_rag.services.ingest import get_source_documents, rebuild_index
 from onprem_rag.services.ollama_manager import is_model_available, pull_model_now
 from onprem_rag.services.rag_engine import get_kb_stats, retrieve, ask_stream
 
@@ -50,6 +50,7 @@ if getattr(sys, "frozen", False):
     UI_HTML = Path(sys._MEIPASS) / "onprem_rag" / "ui" / "index.html"  # type: ignore[attr-defined]
 else:
     UI_HTML = Path(__file__).parent / "ui" / "index.html"
+APP_ICON = UI_HTML.parent / "favicon.ico"
 
 MODELS = {
     "Qwen 2.5 — 7B":  "qwen2.5:7b",
@@ -279,6 +280,15 @@ class Api:
         return get_kb_stats()
 
     def rebuild_kb(self) -> dict:
+        if not get_source_documents():
+            return {
+                "status": "blocked",
+                "error": (
+                    "Upload at least one supported document before rebuilding "
+                    "the knowledge base."
+                ),
+            }
+
         def _rebuild():
             def on_msg(msg):
                 self._emit("kb:progress", {"message": msg})
@@ -409,7 +419,7 @@ def main():
         time.sleep(0.1)
         win.load_url(UI_HTML.as_uri())
 
-    webview.start(_on_start, debug=False)
+    webview.start(_on_start, debug=False, icon=str(APP_ICON))
 
 
 if __name__ == "__main__":

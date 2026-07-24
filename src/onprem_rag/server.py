@@ -92,6 +92,16 @@ def index():
     return send_from_directory(UI_DIR, "index.html")
 
 
+@flask_app.route("/app-icon.svg")
+def app_icon():
+    return send_from_directory(UI_DIR, "app-icon.svg")
+
+
+@flask_app.route("/favicon.ico")
+def favicon():
+    return send_from_directory(UI_DIR, "favicon.ico", mimetype="image/vnd.microsoft.icon")
+
+
 @flask_app.route("/api/events")
 def sse():
     """Deliver real-time events to one browser session."""

@@ -31,6 +31,20 @@ from onprem_rag.services.rag_engine import reset_collection_cache
 EMBED_BATCH_SIZE = 32
 
 
+def get_source_documents(docs_path: Path | None = None) -> list[Path]:
+    """Return supported source documents that are available for indexing."""
+    docs_path = Path(docs_path or DOCS_PATH)
+    if not docs_path.exists():
+        return []
+    return sorted(
+        file_path
+        for file_path in docs_path.iterdir()
+        if file_path.is_file() and file_path.suffix.lower() in {
+            ".pdf", ".docx", ".txt", ".md", ".markdown"
+        }
+    )
+
+
 # ── Text chunker ──────────────────────────────────────────────────────────────
 
 def _split_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list:
@@ -229,6 +243,11 @@ def ingest_documents(
 
 def rebuild_index(progress_callback=None, chunk_progress_callback=None) -> dict:
     """Full rebuild: clear ChromaDB and re-ingest all approved documents."""
+    if not get_source_documents():
+        raise ValueError(
+            "No supported documents are available. Upload at least one PDF, "
+            "DOCX, TXT, or Markdown file before rebuilding the knowledge base."
+        )
     return ingest_documents(
         reset=True,
         progress_callback=progress_callback,

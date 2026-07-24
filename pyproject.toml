@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "onprem-rag-assistant"
-version = "0.1.0"
+version = "1.0.0"
 description = "Self-hosted document assistant with local LLM inference and cited RAG"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -39,7 +39,7 @@ onprem-rag-web = "onprem_rag.server:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-onprem_rag = ["ui/*.html"]
+onprem_rag = ["ui/*.html", "ui/*.svg", "ui/*.ico"]
 
 [tool.ruff]
 line-length = 100
