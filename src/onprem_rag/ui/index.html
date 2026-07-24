@@ -819,13 +819,68 @@ a { color: var(--accent); }
 .kb-stat strong { color: var(--text); }
 .doc-list { display: flex; flex-direction: column; gap: 4px; }
 .doc-chip {
-  padding: 5px 10px;
+  min-height: 42px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 8px 7px 11px;
   background: var(--bg-card);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
   font-size: 12.5px;
   color: var(--text-muted);
 }
+.doc-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.doc-chip-status { color: var(--text-faint); font-size: 11px; }
+.doc-chip-status.indexed { color: var(--accent); }
+.doc-delete-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: var(--text-muted);
+}
+.doc-delete-btn svg { width: 15px; height: 15px; pointer-events: none; }
+.doc-delete-btn:hover { color: var(--danger); background: rgba(229,83,61,.12); }
+.upload-queue { display: flex; flex-direction: column; gap: 6px; }
+.upload-queue:empty { display: none; }
+.upload-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 9px;
+  padding: 9px 11px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-card);
+}
+.upload-row-icon {
+  width: 18px;
+  height: 18px;
+  display: grid;
+  place-items: center;
+  color: var(--text-muted);
+}
+.upload-row-icon svg { width: 15px; height: 15px; }
+.upload-row-name {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 12.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.upload-row-status { color: var(--text-muted); font-size: 11.5px; }
+.upload-row[data-status="uploading"] .upload-row-icon {
+  color: var(--accent);
+  animation: uploadPulse 1s ease-in-out infinite;
+}
+.upload-row[data-status="uploaded"] .upload-row-icon,
+.upload-row[data-status="uploaded"] .upload-row-status { color: var(--accent); }
+.upload-row[data-status="failed"] .upload-row-icon,
+.upload-row[data-status="failed"] .upload-row-status { color: var(--danger); }
+@keyframes uploadPulse { 50% { opacity: .4; } }
 .progress-bar-wrap {
   background: var(--bg-input);
   border-radius: 6px;
@@ -957,6 +1012,24 @@ a { color: var(--accent); }
   font-size: 12px;
   line-height: 1.5;
 }
+.profile-default-toggle {
+  display: flex !important;
+  align-items: center;
+  gap: 9px;
+  margin-top: 16px !important;
+  padding: 11px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text) !important;
+  cursor: pointer;
+}
+.profile-default-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+}
+.confirm-modal { width: min(440px, calc(100vw - 32px)); }
+.confirm-copy { margin: 0; color: var(--text-muted); line-height: 1.6; }
 .about-grid {
   display: grid;
   grid-template-columns: 140px 1fr;
@@ -1124,6 +1197,7 @@ a { color: var(--accent); }
     <div class="modal-body" id="kb-body">
       <div class="kb-stat" id="kb-stat-text">Loading…</div>
       <div class="doc-list" id="kb-doc-list"></div>
+      <div class="upload-queue" id="kb-upload-queue" aria-live="polite"></div>
       <div id="kb-rebuild-section">
         <div class="progress-bar-wrap" id="kb-progress-wrap" style="display:none">
           <div class="progress-bar-fill" id="kb-progress-fill"></div>
@@ -1133,7 +1207,9 @@ a { color: var(--accent); }
     </div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="btn-kb-upload">Upload Documents</button>
-      <button class="btn btn-primary" id="btn-rebuild">Rebuild Index</button>
+      <button class="btn btn-ghost" id="btn-new-index">New Index</button>
+      <button class="btn btn-danger" id="btn-clear-kb">Clear All</button>
+      <button class="btn btn-primary" id="btn-rebuild">Build Index</button>
     </div>
   </div>
 </div>
@@ -1161,6 +1237,10 @@ a { color: var(--accent); }
         <label for="profile-fallback">Response when evidence is unavailable</label>
         <textarea id="profile-fallback" class="profile-fallback" maxlength="500"></textarea>
         <p class="profile-note">Application safety and document-grounding rules always remain active.</p>
+        <label class="profile-default-toggle">
+          <input id="profile-is-default" type="checkbox">
+          Use this profile for new chats
+        </label>
       </div>
     </div>
     <div class="modal-footer">
@@ -1200,6 +1280,22 @@ a { color: var(--accent); }
   </div>
 </div>
 
+<div class="modal-overlay hidden" id="confirm-overlay">
+  <div class="modal confirm-modal" role="alertdialog" aria-modal="true" aria-labelledby="confirm-title" aria-describedby="confirm-message">
+    <div class="modal-header">
+      <div class="modal-title" id="confirm-title">Confirm action</div>
+      <button class="modal-close" id="btn-close-confirm" aria-label="Cancel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+    </div>
+    <div class="modal-body">
+      <p class="confirm-copy" id="confirm-message"></p>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-confirm-cancel">Cancel</button>
+      <button class="btn btn-danger" id="btn-confirm-action">Delete</button>
+    </div>
+  </div>
+</div>
+
 <!-- ── Toast ─────────────────────────────────────────────────── -->
 <div id="toast"></div>
 
@@ -1209,6 +1305,7 @@ const S = {
   chats: [],
   models: [],
   profiles: [],
+  defaultProfileId: 'default',
   currentChatId: null,
   streaming: false,
   theme: localStorage.getItem('theme') || 'dark',
@@ -1216,6 +1313,7 @@ const S = {
   kbRebuilding: false,
   kbLog: '',
   kbProgress: 0,
+  kbUploads: new Map(),
 };
 
 const SAMPLE_QUESTIONS = [
@@ -1250,6 +1348,9 @@ const ICONS = {
   delete: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M7 7l1 13h8l1-13M10 11v5M14 11v5"/></svg>',
   sun: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>',
   moon: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M20 15.4A8 8 0 0 1 8.6 4 8 8 0 1 0 20 15.4Z"/></svg>',
+  file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M6 3h8l4 4v14H6V3Z"/><path d="M14 3v5h4"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>',
+  warning: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3 2.5 20h19L12 3Z"/><path d="M12 9v5M12 17v.5"/></svg>',
 };
 
 function toast(msg, duration = 2800) {
@@ -1258,6 +1359,27 @@ function toast(msg, duration = 2800) {
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), duration);
 }
+
+let confirmResolver = null;
+function resolveConfirmation(confirmed) {
+  $('confirm-overlay').classList.add('hidden');
+  if (confirmResolver) confirmResolver(confirmed);
+  confirmResolver = null;
+}
+function confirmAction(title, message, actionLabel = 'Delete') {
+  $('confirm-title').textContent = title;
+  $('confirm-message').textContent = message;
+  $('btn-confirm-action').textContent = actionLabel;
+  $('confirm-overlay').classList.remove('hidden');
+  $('btn-confirm-action').focus();
+  return new Promise(resolve => { confirmResolver = resolve; });
+}
+$('btn-close-confirm').addEventListener('click', () => resolveConfirmation(false));
+$('btn-confirm-cancel').addEventListener('click', () => resolveConfirmation(false));
+$('btn-confirm-action').addEventListener('click', () => resolveConfirmation(true));
+$('confirm-overlay').addEventListener('click', event => {
+  if (event.target === $('confirm-overlay')) resolveConfirmation(false);
+});
 
 // ── Markdown renderer ──────────────────────────────────────────
 function renderMd(text) {
@@ -1631,8 +1753,7 @@ $('chat-search').addEventListener('input', () => {
 // ── New chat ───────────────────────────────────────────────────
 async function createNewChat() {
   const defaultModel = S.models[0]?.id || 'qwen2.5:7b';
-  const activeProfile = $('agent-profile-select').value || 'default';
-  const chat = await window.pywebview.api.create_chat(defaultModel, activeProfile);
+  const chat = await window.pywebview.api.create_chat(defaultModel, S.defaultProfileId);
   S.chats.unshift(chat);
   renderChats();
   await selectChat(chat.id);
@@ -1854,6 +1975,12 @@ on('stream:token', ({ id, token }) => {
 
 on('stream:done', ({ id, result }) => {
   if (id !== _streamId || !_streamContent) return;
+  // The backend may normalize a streamed model response when it violates the
+  // grounding contract (for example, continuing after the fallback sentence).
+  if (typeof result.answer === 'string' && result.answer !== _streamText) {
+    _streamText = result.answer;
+    _streamContent.innerHTML = renderMd(_streamText);
+  }
   _streamContent.classList.remove('typing-cursor');
   if (_streamRow) {
     const bubble = _streamRow.querySelector('.msg-bubble');
@@ -1974,10 +2101,42 @@ function autoResizeInput() {
 $('user-input').addEventListener('input', autoResizeInput);
 
 // ── Upload documents ───────────────────────────────────────────
+function renderKbUploadStatuses() {
+  const queue = $('kb-upload-queue');
+  queue.innerHTML = '';
+  S.kbUploads.forEach((item, filename) => {
+    const row = el('div', 'upload-row');
+    row.dataset.status = item.status;
+    row.title = item.error || filename;
+    const icon = item.status === 'uploaded'
+      ? ICONS.check
+      : item.status === 'failed' ? ICONS.warning : ICONS.file;
+    const label = item.status === 'queued' ? 'Queued'
+      : item.status === 'uploading' ? 'Uploading…'
+      : item.status === 'uploaded' ? 'Uploaded' : 'Failed';
+    row.innerHTML = `
+      <span class="upload-row-icon">${icon}</span>
+      <span class="upload-row-name">${esc(filename)}</span>
+      <span class="upload-row-status">${label}</span>`;
+    queue.appendChild(row);
+  });
+}
+
+on('kb:upload-status', ({ file, status, error = '' }) => {
+  S.kbUploads.set(file, { status, error });
+  renderKbUploadStatuses();
+});
+
 async function uploadDocuments() {
+  $('kb-overlay').classList.remove('hidden');
+  S.kbUploads.clear();
+  renderKbUploadStatuses();
   const result = await window.pywebview.api.upload_documents();
   if (result.files && result.files.length > 0) {
-    toast(`✅ ${result.files.length} file(s) added. Rebuild the knowledge base to index them.`, 4000);
+    await openKbModal();
+    toast(`${result.files.length} file(s) uploaded. Build the index to make them searchable.`, 4000);
+  } else if (result.failed && result.failed.length > 0) {
+    toast('No files were uploaded. Review the failed items.', 4500);
   }
 }
 $('btn-upload-header').addEventListener('click', uploadDocuments);
@@ -2000,7 +2159,7 @@ async function openKbModal() {
     $('kb-log').textContent = S.kbLog;
     $('kb-log').scrollTop = $('kb-log').scrollHeight;
     $('btn-rebuild').disabled = true;
-    $('btn-rebuild').textContent = 'Rebuilding…';
+    $('btn-rebuild').textContent = 'Building…';
     return;
   }
 
@@ -2010,7 +2169,7 @@ async function openKbModal() {
   $('kb-stat-text').textContent = 'Loading…';
   $('kb-doc-list').innerHTML = '';
   $('btn-rebuild').disabled = false;
-  $('btn-rebuild').textContent = 'Rebuild Index';
+  $('btn-rebuild').textContent = 'Build Index';
 
   const stats = await window.pywebview.api.get_kb_stats();
   const sourceDocuments = stats.source_documents || [];
@@ -2018,28 +2177,58 @@ async function openKbModal() {
   const hasSources = sourceDocuments.length > 0;
   rebuildButton.disabled = !hasSources;
   rebuildButton.title = hasSources
-    ? 'Replace the current index with the available source documents'
-    : 'Upload at least one supported document before rebuilding';
+    ? 'Build a new index from the available source documents'
+    : 'Upload at least one supported document before building the index';
 
   if (stats.indexed) {
     $('kb-stat-text').innerHTML = `<strong>${stats.chunk_count}</strong> sections indexed from <strong>${stats.documents.length}</strong> document(s)`;
-    const dl = $('kb-doc-list');
-    stats.documents.forEach(d => dl.appendChild(el('div', 'doc-chip', d)));
     if (!hasSources) {
-      $('kb-stat-text').innerHTML += '<br><span>No source documents are currently available for a rebuild.</span>';
+      $('kb-stat-text').innerHTML += '<br><span>No source documents are currently available for a new index build.</span>';
     }
   } else if (hasSources) {
-    $('kb-stat-text').innerHTML = `<strong>${sourceDocuments.length}</strong> document(s) ready to index. Select Rebuild Index to continue.`;
-    const dl = $('kb-doc-list');
-    sourceDocuments.forEach(d => dl.appendChild(el('div', 'doc-chip', d)));
+    $('kb-stat-text').innerHTML = `<strong>${sourceDocuments.length}</strong> document(s) ready to index. Select Build Index to continue.`;
   } else {
     $('kb-stat-text').textContent = 'No documents available. Upload at least one PDF, DOCX, TXT, or Markdown file to enable indexing.';
   }
+  const indexedDocuments = new Set(stats.documents || []);
+  const allDocuments = [...new Set([...sourceDocuments, ...(stats.documents || [])])].sort();
+  const documentList = $('kb-doc-list');
+  allDocuments.forEach(filename => {
+    const row = el('div', 'doc-chip');
+    const isIndexed = indexedDocuments.has(filename);
+    row.innerHTML = `
+      <span class="doc-chip-name"></span>
+      <span class="doc-chip-status${isIndexed ? ' indexed' : ''}">${isIndexed ? 'Indexed' : 'Not indexed'}</span>
+      <button class="doc-delete-btn" type="button">${ICONS.delete}</button>`;
+    const nameElement = row.querySelector('.doc-chip-name');
+    nameElement.textContent = filename;
+    nameElement.title = filename;
+    const deleteButton = row.querySelector('.doc-delete-btn');
+    deleteButton.title = `Delete ${filename}`;
+    deleteButton.setAttribute('aria-label', `Delete ${filename}`);
+    deleteButton.addEventListener('click', async () => {
+      const confirmed = await confirmAction(
+        'Delete knowledge-base document?',
+        `Delete "${filename}" and remove its indexed sections? This cannot be undone.`,
+      );
+      if (!confirmed) return;
+      try {
+        const result = await window.pywebview.api.delete_kb_document(filename);
+        if (result.error) throw new Error(result.error);
+        toast(`${filename} deleted`);
+        await openKbModal();
+      } catch (error) {
+        toast(`Could not delete document: ${error.message || error}`, 5000);
+      }
+    });
+    documentList.appendChild(row);
+  });
+  $('btn-clear-kb').disabled = allDocuments.length === 0;
 }
 
 function setUploadLocked(locked) {
-  const tip = locked ? 'Indexing in progress — wait until rebuild finishes' : '';
-  ['btn-upload-header', 'btn-kb-upload'].forEach(id => {
+  const tip = locked ? 'Indexing in progress — wait until the build finishes' : '';
+  ['btn-upload-header', 'btn-kb-upload', 'btn-new-index', 'btn-clear-kb'].forEach(id => {
     const btn = $(id);
     if (!btn) return;
     btn.disabled = locked;
@@ -2060,7 +2249,7 @@ $('btn-rebuild').addEventListener('click', async () => {
   S.kbLog = '';
   S.kbProgress = 0;
   $('btn-rebuild').disabled = true;
-  $('btn-rebuild').textContent = 'Rebuilding…';
+  $('btn-rebuild').textContent = 'Building…';
   setUploadLocked(true);
   $('kb-progress-wrap').style.display = 'block';
   $('kb-log').style.display = 'block';
@@ -2069,8 +2258,43 @@ $('btn-rebuild').addEventListener('click', async () => {
 });
 
 $('btn-kb-upload').addEventListener('click', async () => {
-  $('kb-overlay').classList.add('hidden');
   await uploadDocuments();
+});
+
+$('btn-clear-kb').addEventListener('click', async () => {
+  const confirmed = await confirmAction(
+    'Clear the knowledge base?',
+    'Delete every managed source document and the complete search index? This cannot be undone.',
+    'Clear All',
+  );
+  if (!confirmed) return;
+  try {
+    const result = await window.pywebview.api.clear_kb();
+    if (result.error) throw new Error(result.error);
+    S.kbUploads.clear();
+    renderKbUploadStatuses();
+    await openKbModal();
+    toast(`Knowledge base cleared. ${result.removed_files.length} source file(s) deleted.`);
+  } catch (error) {
+    toast(`Could not clear knowledge base: ${error.message || error}`, 5000);
+  }
+});
+
+$('btn-new-index').addEventListener('click', async () => {
+  const confirmed = await confirmAction(
+    'Start a new index?',
+    'Delete the current source documents and index, then select replacement documents. This cannot be undone.',
+    'Start New Index',
+  );
+  if (!confirmed) return;
+  try {
+    const result = await window.pywebview.api.clear_kb();
+    if (result.error) throw new Error(result.error);
+    await openKbModal();
+    await uploadDocuments();
+  } catch (error) {
+    toast(`Could not start a new index: ${error.message || error}`, 5000);
+  }
 });
 
 on('kb:progress', ({ message }) => {
@@ -2107,8 +2331,10 @@ on('kb:done', async (result) => {
   $('kb-progress-fill').style.width = '100%';
   const log = $('kb-log');
   if (log.style.display !== 'none') log.textContent = S.kbLog;
+  S.kbUploads.clear();
+  renderKbUploadStatuses();
   await openKbModal();
-  toast('✅ Knowledge base rebuilt successfully');
+  toast('Knowledge base index built successfully');
 });
 
 on('kb:error', ({ error }) => {
@@ -2116,10 +2342,10 @@ on('kb:error', ({ error }) => {
   setUploadLocked(false);
   S.kbLog += `\n❌ Error: ${error}`;
   $('btn-rebuild').disabled = false;
-  $('btn-rebuild').textContent = 'Rebuild Index';
+  $('btn-rebuild').textContent = 'Build Index';
   const log = $('kb-log');
   if (log.style.display !== 'none') log.textContent = S.kbLog;
-  toast(`❌ Rebuild failed: ${error}`, 5000);
+  toast(`Index build failed: ${error}`, 5000);
 });
 
 // ── Agent profiles ─────────────────────────────────────────────
@@ -2144,6 +2370,8 @@ function editProfile(profile) {
   $('profile-description').value = profile?.description || '';
   $('profile-instructions').value = profile?.instructions || '';
   $('profile-fallback').value = profile?.fallback || '';
+  $('profile-is-default').checked = profile?.id === S.defaultProfileId;
+  $('profile-is-default').disabled = !profile;
   const readOnly = Boolean(profile?.built_in);
   ['profile-name', 'profile-description', 'profile-instructions', 'profile-fallback']
     .forEach(id => $(id).disabled = readOnly);
@@ -2163,7 +2391,10 @@ function renderProfileList() {
     const button = document.createElement('button');
     button.className = 'profile-list-item';
     button.dataset.id = profile.id;
-    button.textContent = profile.name + (profile.built_in ? ' · Built-in' : '');
+    const labels = [];
+    if (profile.built_in) labels.push('Built-in');
+    if (profile.id === S.defaultProfileId) labels.push('Default');
+    button.textContent = profile.name + (labels.length ? ` · ${labels.join(' · ')}` : '');
     button.addEventListener('click', () => editProfile(profile));
     list.appendChild(button);
   });
@@ -2171,6 +2402,8 @@ function renderProfileList() {
 
 async function refreshProfiles(selectedId) {
   S.profiles = await window.pywebview.api.get_agent_profiles();
+  const defaultResult = await window.pywebview.api.get_default_agent_profile();
+  S.defaultProfileId = defaultResult.profile_id || 'default';
   renderProfileList();
   const activeChat = S.chats.find(chat => chat.id === S.currentChatId);
   renderProfileSelector(activeChat?.agent_profile_id || 'default');
@@ -2199,6 +2432,22 @@ $('btn-new-profile').addEventListener('click', () => {
   $('profile-name').focus();
 });
 
+$('profile-is-default').addEventListener('change', async event => {
+  if (!editingProfile?.id) return;
+  const requestedId = event.target.checked ? editingProfile.id : 'default';
+  try {
+    const result = await window.pywebview.api.set_default_agent_profile(requestedId);
+    S.defaultProfileId = result.profile_id;
+    event.target.checked = editingProfile.id === S.defaultProfileId;
+    renderProfileList();
+    const activeDefault = S.profiles.find(profile => profile.id === S.defaultProfileId);
+    toast(`Default profile set to ${activeDefault?.name || 'General Document Assistant'}`);
+  } catch (error) {
+    event.target.checked = editingProfile.id === S.defaultProfileId;
+    toast(`Could not update default profile: ${error.message || error}`, 4500);
+  }
+});
+
 $('btn-save-profile').addEventListener('click', async () => {
   const values = [
     $('profile-name').value,
@@ -2210,6 +2459,13 @@ $('btn-save-profile').addEventListener('click', async () => {
     const saved = $('profile-id').value
       ? await window.pywebview.api.update_agent_profile($('profile-id').value, ...values)
       : await window.pywebview.api.create_agent_profile(...values);
+    if ($('profile-is-default').checked) {
+      const defaultResult = await window.pywebview.api.set_default_agent_profile(saved.id);
+      S.defaultProfileId = defaultResult.profile_id;
+    } else if (S.defaultProfileId === saved.id) {
+      const defaultResult = await window.pywebview.api.set_default_agent_profile('default');
+      S.defaultProfileId = defaultResult.profile_id;
+    }
     await refreshProfiles(saved.id);
     toast('Agent profile saved');
   } catch (error) {
@@ -2219,14 +2475,24 @@ $('btn-save-profile').addEventListener('click', async () => {
 
 $('btn-delete-profile').addEventListener('click', async () => {
   if (!editingProfile || editingProfile.built_in) return;
-  if (!confirm(`Delete "${editingProfile.name}"? Chats using it will return to the default profile.`)) return;
+  const confirmed = await confirmAction(
+    'Delete agent profile?',
+    `Delete "${editingProfile.name}"? Chats using it will return to the built-in profile.`,
+  );
+  if (!confirmed) return;
   const deletedId = editingProfile.id;
-  await window.pywebview.api.delete_agent_profile(deletedId);
-  S.chats.forEach(chat => {
-    if (chat.agent_profile_id === deletedId) chat.agent_profile_id = 'default';
-  });
-  await refreshProfiles('default');
-  toast('Agent profile deleted');
+  try {
+    const result = await window.pywebview.api.delete_agent_profile(deletedId);
+    if (result.error) throw new Error(result.error);
+    S.chats.forEach(chat => {
+      if (chat.agent_profile_id === deletedId) chat.agent_profile_id = 'default';
+    });
+    if (S.defaultProfileId === deletedId) S.defaultProfileId = 'default';
+    await refreshProfiles('default');
+    toast('Agent profile deleted');
+  } catch (error) {
+    toast(`Could not delete profile: ${error.message || error}`, 4500);
+  }
 });
 
 $('btn-duplicate-profile').addEventListener('click', () => {
@@ -2319,6 +2585,8 @@ async function init() {
 
   S.models = await window.pywebview.api.get_models();
   S.profiles = await window.pywebview.api.get_agent_profiles();
+  const defaultProfile = await window.pywebview.api.get_default_agent_profile();
+  S.defaultProfileId = defaultProfile.profile_id || 'default';
   S.chats  = await window.pywebview.api.get_chats();
 
   renderChats();
@@ -2421,9 +2689,14 @@ document.addEventListener('DOMContentLoaded', () => {
     if (!_kbResolve) return;
 
     const results = [];
+    const failed = [];
+    files.forEach(file => {
+      window._emit('kb:upload-status', { file: file.name, status: 'queued' });
+    });
     for (const file of files) {
       const form = new FormData();
       form.append('file',    file);
+      window._emit('kb:upload-status', { file: file.name, status: 'uploading' });
       form.append('chat_id', '');   // KB upload — no specific chat
       try {
         const res  = await fetch('/api/upload_kb_document', {
@@ -2432,10 +2705,28 @@ document.addEventListener('DOMContentLoaded', () => {
           body: form,
         });
         const data = await res.json();
-        if (data.ok) results.push(file.name);
-      } catch (_) {}
+        if (data.ok) {
+          results.push(file.name);
+          window._emit('kb:upload-status', { file: file.name, status: 'uploaded' });
+        } else {
+          const error = data.error || `Upload failed with status ${res.status}`;
+          failed.push({ file: file.name, error });
+          window._emit('kb:upload-status', {
+            file: file.name,
+            status: 'failed',
+            error,
+          });
+        }
+      } catch (error) {
+        failed.push({ file: file.name, error: String(error) });
+        window._emit('kb:upload-status', {
+          file: file.name,
+          status: 'failed',
+          error: String(error),
+        });
+      }
     }
-    _kbResolve({ files: results });
+    _kbResolve({ files: results, failed, cancelled: files.length === 0 });
     _kbResolve = null;
   });
 
@@ -2449,7 +2740,9 @@ document.addEventListener('DOMContentLoaded', () => {
       },
       body:    JSON.stringify(args),
     });
-    return res.json();
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.error || `Request failed with status ${res.status}`);
+    return data;
   }
 
   // ── pywebview.api proxy ───────────────────────────────────────────────────

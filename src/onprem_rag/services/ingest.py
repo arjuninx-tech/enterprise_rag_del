@@ -45,6 +45,69 @@ def get_source_documents(docs_path: Path | None = None) -> list[Path]:
     )
 
 
+def delete_knowledge_document(filename: str) -> dict:
+    """Delete one managed source document and its indexed chunks."""
+    safe_name = Path(filename).name
+    if safe_name != filename or Path(safe_name).suffix.lower() not in {
+        ".pdf", ".docx", ".txt", ".md", ".markdown"
+    }:
+        raise ValueError("Invalid knowledge-base document name")
+
+    source_path = DOCS_PATH / safe_name
+    removed_source = False
+    if source_path.exists():
+        source_path.unlink()
+        removed_source = True
+
+    removed_chunks = 0
+    if CHROMA_PATH.exists():
+        try:
+            client = chromadb.PersistentClient(path=str(CHROMA_PATH))
+            collection_names = {
+                collection.name for collection in client.list_collections()
+            }
+            if CHROMA_COLLECTION in collection_names:
+                collection = client.get_collection(CHROMA_COLLECTION)
+                matches = collection.get(
+                    where={"document_name": safe_name},
+                    include=[],
+                )
+                removed_chunks = len(matches.get("ids", []))
+                if removed_chunks:
+                    collection.delete(where={"document_name": safe_name})
+        except Exception as exc:
+            raise RuntimeError(
+                f"The source file was removed, but its index entries could not be deleted: {exc}"
+            ) from exc
+
+    reset_collection_cache()
+    return {
+        "ok": True,
+        "filename": safe_name,
+        "removed_source": removed_source,
+        "removed_chunks": removed_chunks,
+    }
+
+
+def clear_knowledge_base() -> dict:
+    """Delete all managed source documents and the complete vector index."""
+    removed_files = []
+    for source_path in get_source_documents():
+        source_path.unlink()
+        removed_files.append(source_path.name)
+
+    if CHROMA_PATH.exists():
+        try:
+            client = chromadb.PersistentClient(path=str(CHROMA_PATH))
+            client.delete_collection(CHROMA_COLLECTION)
+        except Exception:
+            # A missing collection is already a valid cleared state.
+            pass
+
+    reset_collection_cache()
+    return {"ok": True, "removed_files": removed_files}
+
+
 # ── Text chunker ──────────────────────────────────────────────────────────────
 
 def _split_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OVERLAP) -> list:
@@ -71,7 +134,13 @@ def _split_text(text: str, chunk_size: int = CHUNK_SIZE, overlap: int = CHUNK_OV
         chunk = text[start:break_pos].strip()
         if chunk:
             chunks.append(chunk)
-        start = max(break_pos - overlap, start + 1)
+        # Apply overlap only when the current chunk is larger than the
+        # requested overlap. Advancing by one character for short sentences
+        # creates thousands of near-duplicate micro-chunks.
+        if break_pos - start > overlap:
+            start = break_pos - overlap
+        else:
+            start = break_pos
 
     return [c for c in chunks if c.strip()]
 

@@ -64,6 +64,31 @@ def get_profile(profile_id: str) -> dict:
     return {**dict(row), "built_in": False} if row else default_profile()
 
 
+def get_default_profile_id() -> str:
+    """Return the profile used for newly created chats."""
+    with _conn() as conn:
+        row = conn.execute(
+            "SELECT value FROM app_settings WHERE key='default_agent_profile_id'"
+        ).fetchone()
+    profile_id = row["value"] if row else DEFAULT_PROFILE_ID
+    return get_profile(profile_id)["id"]
+
+
+def set_default_profile_id(profile_id: str) -> str:
+    """Persist the profile used for newly created chats."""
+    resolved_id = get_profile(profile_id)["id"]
+    if resolved_id != profile_id:
+        raise ValueError("Agent profile not found")
+    with _conn() as conn:
+        conn.execute(
+            "INSERT INTO app_settings (key, value) VALUES (?, ?) "
+            "ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+            ("default_agent_profile_id", resolved_id),
+        )
+        conn.commit()
+    return resolved_id
+
+
 def create_profile(
     name: str,
     description: str,
@@ -112,6 +137,11 @@ def delete_profile(profile_id: str) -> None:
     if profile_id == DEFAULT_PROFILE_ID:
         raise ValueError("The built-in profile cannot be deleted")
     with _conn() as conn:
+        conn.execute(
+            "UPDATE app_settings SET value=? "
+            "WHERE key='default_agent_profile_id' AND value=?",
+            (DEFAULT_PROFILE_ID, profile_id),
+        )
         conn.execute(
             "UPDATE chats SET agent_profile_id=? WHERE agent_profile_id=?",
             (DEFAULT_PROFILE_ID, profile_id),

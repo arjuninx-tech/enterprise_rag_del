@@ -20,8 +20,10 @@ from onprem_rag.config import DOCS_PATH, EMBED_MODEL, OLLAMA_BASE_URL
 from onprem_rag.models.agent_profile_store import (
     create_profile,
     delete_profile,
+    get_default_profile_id,
     get_profile,
     list_profiles,
+    set_default_profile_id,
     update_profile,
 )
 from onprem_rag.models.chat_store import (
@@ -41,7 +43,12 @@ from onprem_rag.models.attachment_store import (
     remove_document,
     clear_documents,
 )
-from onprem_rag.services.ingest import get_source_documents, rebuild_index
+from onprem_rag.services.ingest import (
+    clear_knowledge_base,
+    delete_knowledge_document,
+    get_source_documents,
+    rebuild_index,
+)
 from onprem_rag.services.ollama_manager import is_model_available, pull_model_now
 from onprem_rag.services.rag_engine import get_kb_stats, retrieve, ask_stream
 
@@ -140,6 +147,12 @@ class Api:
     def delete_agent_profile(self, profile_id: str) -> dict:
         delete_profile(profile_id)
         return {"ok": True}
+
+    def get_default_agent_profile(self) -> dict:
+        return {"profile_id": get_default_profile_id()}
+
+    def set_default_agent_profile(self, profile_id: str) -> dict:
+        return {"profile_id": set_default_profile_id(profile_id)}
 
     # ── Models ────────────────────────────────────────────────────────────────
 
@@ -279,6 +292,12 @@ class Api:
     def get_kb_stats(self) -> dict:
         return get_kb_stats()
 
+    def delete_kb_document(self, filename: str) -> dict:
+        return delete_knowledge_document(filename)
+
+    def clear_kb(self) -> dict:
+        return clear_knowledge_base()
+
     def rebuild_kb(self) -> dict:
         if not get_source_documents():
             return {
@@ -313,14 +332,36 @@ class Api:
             file_types=("PDF Files (*.pdf)", "Word Documents (*.docx)", "Text Files (*.txt)"),
         )
         if not files:
-            return {"files": []}
+            return {"files": [], "failed": [], "cancelled": True}
         DOCS_PATH.mkdir(parents=True, exist_ok=True)
         copied = []
+        failed = []
         for src in files:
-            dest = DOCS_PATH / Path(src).name
-            shutil.copy2(src, dest)
-            copied.append(Path(src).name)
-        return {"files": copied}
+            self._emit(
+                "kb:upload-status",
+                {"file": Path(src).name, "status": "queued"},
+            )
+        for src in files:
+            filename = Path(src).name
+            self._emit(
+                "kb:upload-status",
+                {"file": filename, "status": "uploading"},
+            )
+            try:
+                dest = DOCS_PATH / filename
+                shutil.copy2(src, dest)
+                copied.append(filename)
+                self._emit(
+                    "kb:upload-status",
+                    {"file": filename, "status": "uploaded"},
+                )
+            except Exception as exc:
+                failed.append({"file": filename, "error": str(exc)})
+                self._emit(
+                    "kb:upload-status",
+                    {"file": filename, "status": "failed", "error": str(exc)},
+                )
+        return {"files": copied, "failed": failed, "cancelled": False}
 
     # ── Ollama ────────────────────────────────────────────────────────────────
 

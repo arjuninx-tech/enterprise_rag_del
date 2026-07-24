@@ -13,6 +13,9 @@ from onprem_rag.config import (
     EMBED_MODEL,
     LLM_MODEL,
     OLLAMA_BASE_URL,
+    OLLAMA_NUM_CTX,
+    OLLAMA_NUM_PREDICT,
+    SUMMARY_TOP_K,
     TOP_K,
     MAX_COSINE_DISTANCE,
 )
@@ -62,10 +65,50 @@ def _embed_question(question):
 
 # ── Vector search ─────────────────────────────────────────────────────────────
 
-def _search_chunks(collection, embedding):
+_BROAD_QUERY_TERMS = (
+    "summarize",
+    "summary",
+    "overview",
+    "entire",
+    "whole",
+    "all documents",
+    "across documents",
+    "compare",
+)
+
+_AMBIGUOUS_REQUESTS = {
+    "help",
+    "help me",
+    "assist",
+    "assist me",
+    "please help",
+    "what can you do",
+}
+
+
+def clarification_response(question: str) -> str | None:
+    """Return a useful clarification prompt for requests with no actionable subject."""
+    normalized = " ".join(question.lower().strip().rstrip("?.!").split())
+    if normalized in _AMBIGUOUS_REQUESTS:
+        return (
+            "What would you like help with—summarizing a document, finding a "
+            "requirement, comparing documents, or extracting specific information?"
+        )
+    return None
+
+
+def _retrieval_limit(question: str) -> int:
+    """Use wider evidence coverage for broad synthesis requests."""
+    normalized = question.lower()
+    if any(term in normalized for term in _BROAD_QUERY_TERMS):
+        return max(TOP_K, SUMMARY_TOP_K)
+    return TOP_K
+
+
+def _search_chunks(collection, embedding, question: str = ""):
     results = collection.query(
         query_embeddings=[embedding],
-        n_results=min(TOP_K, collection.count()),
+        n_results=min(_retrieval_limit(question), collection.count()),
         include=["documents", "metadatas", "distances"],
     )
     chunks = []
@@ -128,6 +171,8 @@ def retrieve(question: str) -> dict:
     question = question.strip()
     if not question:
         return {"chunks": [], "found": False, "error": None, "collection_empty": False}
+    if clarification_response(question):
+        return {"chunks": [], "found": False, "error": None, "collection_empty": False}
 
     collection = _get_collection()
     if collection is None:
@@ -149,7 +194,7 @@ def retrieve(question: str) -> dict:
         return {"chunks": [], "found": False, "error": str(e), "collection_empty": False}
 
     try:
-        chunks = _search_chunks(collection, embedding)
+        chunks = _search_chunks(collection, embedding, question)
     except Exception as e:
         log_error("rag_engine — vector search", e)
         return {"chunks": [], "found": False, "error": str(e), "collection_empty": False}
@@ -190,6 +235,18 @@ def ask_stream(
             result_holder.update({"answer": "Please enter a question.", "sources": [], "found": False, "error": None})
             return
 
+        clarification = clarification_response(question)
+        if clarification:
+            yield clarification
+            result_holder.update({
+                "answer": clarification,
+                "sources": [],
+                "found": False,
+                "error": None,
+                "model": active_model,
+            })
+            return
+
         resolved_chunks = chunks
 
         # ── KB retrieval (skip if we have attachments and no explicit chunks) ──
@@ -214,7 +271,7 @@ def ask_stream(
                 return
             try:
                 embedding = _embed_question(question)
-                resolved_chunks = _search_chunks(collection, embedding)
+                resolved_chunks = _search_chunks(collection, embedding, question)
             except Exception as e:
                 msg = f"Could not connect to Ollama. Error: {e}"
                 yield msg
@@ -246,7 +303,11 @@ def ask_stream(
                     {"role": "user",   "content": prompt},
                 ],
                 stream=True,
-                options={"temperature": 0.1, "num_predict": 1024},
+                options={
+                    "temperature": 0.1,
+                    "num_ctx": OLLAMA_NUM_CTX,
+                    "num_predict": OLLAMA_NUM_PREDICT,
+                },
             )
             full_answer = ""
             token_count = 0
@@ -265,11 +326,9 @@ def ask_stream(
         gen_time = time.time() - gen_start
         tokens_per_sec = round(token_count / gen_time, 1) if gen_time > 0 else 0
 
-        answer_lower = full_answer.lower()
-        not_found = (
-            fallback_response.lower() in answer_lower
-            or "not found in" in answer_lower
-        )
+        answer_lower = full_answer.strip().lower()
+        fallback_lower = fallback_response.lower()
+        not_found = answer_lower.startswith(fallback_lower)
         found = not not_found
         sources = _format_sources(resolved_chunks) if found else []
         final_answer = full_answer if found else fallback_response

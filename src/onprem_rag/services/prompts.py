@@ -40,7 +40,13 @@ def build_system_prompt(profile: dict | None) -> str:
         "<agent_profile>\n"
         f"{instructions}\n"
         "</agent_profile>\n\n"
-        "When the supplied context does not support an answer, respond exactly with:\n"
+        "Choose exactly one response mode:\n"
+        "1. SUPPORTED: answer from the supplied context and cite the supporting documents.\n"
+        "2. PARTIAL: answer only the supported portion, then clearly identify what the "
+        "context does not establish. Do not use the unavailable-evidence sentence below.\n"
+        "3. CLARIFY: ask one concise question when the user's request is ambiguous.\n"
+        "4. UNAVAILABLE: when no part of the request is supported, respond with only this "
+        "sentence and do not add explanations, general knowledge, or an answer after it:\n"
         f'"{fallback}"'
     )
 

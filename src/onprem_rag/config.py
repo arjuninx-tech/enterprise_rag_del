@@ -48,6 +48,8 @@ else:
 OLLAMA_BASE_URL: str = os.getenv("OLLAMA_BASE_URL", "http://localhost:11434")
 LLM_MODEL: str       = os.getenv("LLM_MODEL",       "qwen2.5:7b")
 EMBED_MODEL: str     = os.getenv("EMBED_MODEL",      "nomic-embed-text")
+OLLAMA_NUM_CTX: int = int(os.getenv("OLLAMA_NUM_CTX", "8192"))
+OLLAMA_NUM_PREDICT: int = int(os.getenv("OLLAMA_NUM_PREDICT", "2048"))
 
 # ── Paths ─────────────────────────────────────────────────────────────────────
 CHROMA_PATH:   Path = ROOT / os.getenv("CHROMA_PATH",   "data/vector_db")
@@ -59,11 +61,12 @@ LOG_PATH:      Path = ROOT / os.getenv("LOG_PATH",      "logs/questions.log")
 CHROMA_COLLECTION: str = "knowledge_documents"
 
 # ── Chunking ──────────────────────────────────────────────────────────────────
-CHUNK_SIZE:    int = int(os.getenv("CHUNK_SIZE", "600"))
-CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "80"))
+CHUNK_SIZE:    int = int(os.getenv("CHUNK_SIZE", "1600"))
+CHUNK_OVERLAP: int = int(os.getenv("CHUNK_OVERLAP", "200"))
 
 # ── Retrieval ─────────────────────────────────────────────────────────────────
 TOP_K: int = int(os.getenv("TOP_K", "3"))
+SUMMARY_TOP_K: int = int(os.getenv("SUMMARY_TOP_K", "12"))
 MAX_COSINE_DISTANCE: float = float(os.getenv("MAX_COSINE_DISTANCE", "0.65"))
 
 # ── Supported file extensions ─────────────────────────────────────────────────
