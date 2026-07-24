@@ -892,6 +892,63 @@ a { color: var(--accent); }
   font-size: 12.5px;
   color: var(--accent);
 }
+.profile-select {
+  max-width: 190px;
+  padding: 7px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text);
+}
+.profile-layout {
+  display: grid;
+  grid-template-columns: 190px 1fr;
+  gap: 18px;
+  min-height: 390px;
+}
+.profile-list { border-right: 1px solid var(--border); padding-right: 12px; }
+.profile-list-item {
+  width: 100%;
+  margin-bottom: 6px;
+  padding: 9px;
+  border: 0;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+}
+.profile-list-item:hover, .profile-list-item.active { background: var(--bg-hover); }
+.profile-form label {
+  display: block;
+  margin: 10px 0 5px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+.profile-form input, .profile-form textarea {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-input);
+  color: var(--text);
+  font: inherit;
+}
+.profile-form textarea { resize: vertical; min-height: 150px; }
+.profile-form textarea.profile-fallback { min-height: 65px; }
+.profile-note, .about-copy {
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.5;
+}
+.about-grid {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 10px 14px;
+}
+.about-grid dt { color: var(--text-muted); }
+.about-grid dd { margin: 0; overflow-wrap: anywhere; }
+.about-grid a { color: var(--accent); }
 </style>
 </head>
 <body>
@@ -936,6 +993,8 @@ a { color: var(--accent); }
         </svg>
         Knowledge Base
       </button>
+      <button class="sidebar-footer-btn" id="btn-open-profiles">Agent Profiles</button>
+      <button class="sidebar-footer-btn" id="btn-open-about">About</button>
       <button class="sidebar-footer-btn" id="btn-theme" title="Toggle theme">🌙</button>
     </div>
   </aside>
@@ -956,6 +1015,7 @@ a { color: var(--accent); }
         </div>
         <div id="model-picker-dropdown" class="hidden" role="listbox"></div>
       </div>
+      <select id="agent-profile-select" class="profile-select" title="Agent profile"></select>
       <button id="btn-upload-header" title="Upload documents to knowledge base">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66L9.64 16.2a2 2 0 01-2.83-2.83l8.49-8.48"/>
@@ -1043,6 +1103,68 @@ a { color: var(--accent); }
   </div>
 </div>
 
+<!-- Agent profiles -->
+<div class="modal-overlay hidden" id="profiles-overlay">
+  <div class="modal" style="width:min(820px,92vw)">
+    <div class="modal-header">
+      <div class="modal-title">Agent Profiles</div>
+      <button class="modal-close" id="btn-close-profiles">×</button>
+    </div>
+    <div class="modal-body profile-layout">
+      <div class="profile-list">
+        <button class="btn btn-primary" id="btn-new-profile" style="width:100%;margin-bottom:12px">New Profile</button>
+        <div id="profile-list"></div>
+      </div>
+      <div class="profile-form">
+        <input id="profile-id" type="hidden">
+        <label for="profile-name">Name</label>
+        <input id="profile-name" maxlength="80">
+        <label for="profile-description">Description</label>
+        <input id="profile-description" maxlength="500">
+        <label for="profile-instructions">Expertise and response instructions</label>
+        <textarea id="profile-instructions" maxlength="12000"></textarea>
+        <label for="profile-fallback">Response when evidence is unavailable</label>
+        <textarea id="profile-fallback" class="profile-fallback" maxlength="500"></textarea>
+        <p class="profile-note">Application safety and document-grounding rules always remain active.</p>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="btn-import-profile">Import JSON</button>
+      <button class="btn btn-ghost" id="btn-export-profile">Export JSON</button>
+      <button class="btn btn-ghost" id="btn-duplicate-profile">Duplicate</button>
+      <button class="btn btn-ghost" id="btn-delete-profile">Delete</button>
+      <button class="btn btn-primary" id="btn-save-profile">Save</button>
+      <input id="profile-import-file" type="file" accept="application/json,.json" hidden>
+    </div>
+  </div>
+</div>
+
+<!-- About -->
+<div class="modal-overlay hidden" id="about-overlay">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">About</div>
+      <button class="modal-close" id="btn-close-about">×</button>
+    </div>
+    <div class="modal-body">
+      <p class="about-copy">Self-hosted document intelligence with local retrieval and model inference.</p>
+      <dl class="about-grid">
+        <dt>Application</dt><dd id="about-name"></dd>
+        <dt>Version</dt><dd id="about-version"></dd>
+        <dt>Repository</dt><dd><a id="about-repository" target="_blank" rel="noopener"></a></dd>
+        <dt>Notices</dt><dd><a id="about-notices" target="_blank" rel="noopener">Third-party licenses</a></dd>
+        <dt>License</dt><dd id="about-license"></dd>
+        <dt>Runtime</dt><dd id="about-runtime"></dd>
+        <dt>Answer model</dt><dd id="about-answer-model"></dd>
+        <dt>Embedding model</dt><dd id="about-embedding-model"></dd>
+        <dt>Endpoint</dt><dd id="about-endpoint"></dd>
+      </dl>
+      <p class="about-copy">Model outputs can be inaccurate. Verify important answers against cited documents.
+      Model licenses are independent of this application's MIT license and should be reviewed before use.</p>
+    </div>
+  </div>
+</div>
+
 <!-- ── Toast ─────────────────────────────────────────────────── -->
 <div id="toast"></div>
 
@@ -1051,6 +1173,7 @@ a { color: var(--accent); }
 const S = {
   chats: [],
   models: [],
+  profiles: [],
   currentChatId: null,
   streaming: false,
   theme: localStorage.getItem('theme') || 'dark',
@@ -1280,6 +1403,7 @@ async function selectChat(chatId) {
 
   $('chat-title').value = chat.name;
   updateModelSelect(chat.model);
+  renderProfileSelector(chat.agent_profile_id || 'default');
 
   // Check model availability
   checkModelBanner(chat.model);
@@ -1463,13 +1587,23 @@ $('chat-search').addEventListener('input', () => {
 // ── New chat ───────────────────────────────────────────────────
 async function createNewChat() {
   const defaultModel = S.models[0]?.id || 'qwen2.5:7b';
-  const chat = await window.pywebview.api.create_chat(defaultModel);
+  const activeProfile = $('agent-profile-select').value || 'default';
+  const chat = await window.pywebview.api.create_chat(defaultModel, activeProfile);
   S.chats.unshift(chat);
   renderChats();
   await selectChat(chat.id);
 }
 $('btn-new-chat').addEventListener('click', createNewChat);
 $('btn-start-chat').addEventListener('click', createNewChat);
+
+$('agent-profile-select').addEventListener('change', async () => {
+  if (!S.currentChatId) return;
+  const profileId = $('agent-profile-select').value;
+  await window.pywebview.api.set_chat_agent_profile(S.currentChatId, profileId);
+  const chat = S.chats.find(item => item.id === S.currentChatId);
+  if (chat) chat.agent_profile_id = profileId;
+  toast('Agent profile updated');
+});
 
 // ── Rename via header ──────────────────────────────────────────
 $('chat-title').addEventListener('change', async () => {
@@ -1924,6 +2058,183 @@ on('kb:error', ({ error }) => {
   toast(`❌ Rebuild failed: ${error}`, 5000);
 });
 
+// ── Agent profiles ─────────────────────────────────────────────
+let editingProfile = null;
+
+function renderProfileSelector(selectedId = 'default') {
+  const select = $('agent-profile-select');
+  select.innerHTML = '';
+  S.profiles.forEach(profile => {
+    const option = document.createElement('option');
+    option.value = profile.id;
+    option.textContent = profile.name;
+    option.selected = profile.id === selectedId;
+    select.appendChild(option);
+  });
+}
+
+function editProfile(profile) {
+  editingProfile = profile;
+  $('profile-id').value = profile?.id || '';
+  $('profile-name').value = profile?.name || '';
+  $('profile-description').value = profile?.description || '';
+  $('profile-instructions').value = profile?.instructions || '';
+  $('profile-fallback').value = profile?.fallback || '';
+  const readOnly = Boolean(profile?.built_in);
+  ['profile-name', 'profile-description', 'profile-instructions', 'profile-fallback']
+    .forEach(id => $(id).disabled = readOnly);
+  $('btn-save-profile').disabled = readOnly;
+  $('btn-delete-profile').disabled = readOnly || !profile;
+  $('btn-export-profile').disabled = !profile;
+  $('btn-duplicate-profile').disabled = !profile;
+  document.querySelectorAll('.profile-list-item').forEach(button => {
+    button.classList.toggle('active', button.dataset.id === profile?.id);
+  });
+}
+
+function renderProfileList() {
+  const list = $('profile-list');
+  list.innerHTML = '';
+  S.profiles.forEach(profile => {
+    const button = document.createElement('button');
+    button.className = 'profile-list-item';
+    button.dataset.id = profile.id;
+    button.textContent = profile.name + (profile.built_in ? ' · Built-in' : '');
+    button.addEventListener('click', () => editProfile(profile));
+    list.appendChild(button);
+  });
+}
+
+async function refreshProfiles(selectedId) {
+  S.profiles = await window.pywebview.api.get_agent_profiles();
+  renderProfileList();
+  const activeChat = S.chats.find(chat => chat.id === S.currentChatId);
+  renderProfileSelector(activeChat?.agent_profile_id || 'default');
+  editProfile(S.profiles.find(profile => profile.id === selectedId) || S.profiles[0]);
+}
+
+$('btn-open-profiles').addEventListener('click', async () => {
+  await refreshProfiles(editingProfile?.id);
+  $('profiles-overlay').classList.remove('hidden');
+});
+$('btn-close-profiles').addEventListener('click', () => $('profiles-overlay').classList.add('hidden'));
+$('profiles-overlay').addEventListener('click', event => {
+  if (event.target === $('profiles-overlay')) $('profiles-overlay').classList.add('hidden');
+});
+
+$('btn-new-profile').addEventListener('click', () => {
+  const defaults = S.profiles.find(profile => profile.id === 'default');
+  editProfile({
+    id: '',
+    name: '',
+    description: '',
+    instructions: defaults?.instructions || '',
+    fallback: defaults?.fallback || '',
+    built_in: false,
+  });
+  $('profile-name').focus();
+});
+
+$('btn-save-profile').addEventListener('click', async () => {
+  const values = [
+    $('profile-name').value,
+    $('profile-description').value,
+    $('profile-instructions').value,
+    $('profile-fallback').value,
+  ];
+  try {
+    const saved = $('profile-id').value
+      ? await window.pywebview.api.update_agent_profile($('profile-id').value, ...values)
+      : await window.pywebview.api.create_agent_profile(...values);
+    await refreshProfiles(saved.id);
+    toast('Agent profile saved');
+  } catch (error) {
+    toast(`Could not save profile: ${error}`);
+  }
+});
+
+$('btn-delete-profile').addEventListener('click', async () => {
+  if (!editingProfile || editingProfile.built_in) return;
+  if (!confirm(`Delete "${editingProfile.name}"? Chats using it will return to the default profile.`)) return;
+  const deletedId = editingProfile.id;
+  await window.pywebview.api.delete_agent_profile(deletedId);
+  S.chats.forEach(chat => {
+    if (chat.agent_profile_id === deletedId) chat.agent_profile_id = 'default';
+  });
+  await refreshProfiles('default');
+  toast('Agent profile deleted');
+});
+
+$('btn-duplicate-profile').addEventListener('click', () => {
+  if (!editingProfile) return;
+  editProfile({
+    ...editingProfile,
+    id: '',
+    name: `${editingProfile.name} Copy`,
+    built_in: false,
+  });
+  $('profile-name').focus();
+});
+
+$('btn-export-profile').addEventListener('click', () => {
+  if (!editingProfile) return;
+  const exported = {
+    schema_version: 1,
+    name: editingProfile.name,
+    description: editingProfile.description,
+    instructions: editingProfile.instructions,
+    fallback: editingProfile.fallback,
+  };
+  const blob = new Blob([JSON.stringify(exported, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${editingProfile.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}.json`;
+  link.click();
+  URL.revokeObjectURL(url);
+});
+
+$('btn-import-profile').addEventListener('click', () => $('profile-import-file').click());
+$('profile-import-file').addEventListener('change', async event => {
+  const file = event.target.files[0];
+  event.target.value = '';
+  if (!file) return;
+  try {
+    const imported = JSON.parse(await file.text());
+    if (imported.schema_version !== 1) throw new Error('Unsupported profile schema');
+    editProfile({
+      id: '',
+      name: String(imported.name || ''),
+      description: String(imported.description || ''),
+      instructions: String(imported.instructions || ''),
+      fallback: String(imported.fallback || ''),
+      built_in: false,
+    });
+  } catch (error) {
+    toast(`Could not import profile: ${error.message || error}`);
+  }
+});
+
+// ── About ─────────────────────────────────────────────────────
+$('btn-open-about').addEventListener('click', async () => {
+  const info = await window.pywebview.api.get_app_info();
+  $('about-name').textContent = info.name;
+  $('about-version').textContent = info.version;
+  $('about-repository').textContent = info.repository;
+  $('about-repository').href = info.repository;
+  $('about-notices').href = info.third_party_notices;
+  $('about-license').textContent = info.license;
+  $('about-runtime').textContent = info.runtime;
+  $('about-answer-model').textContent = getSelectedModel() || 'No chat selected';
+  $('about-embedding-model').textContent = info.embedding_model;
+  $('about-endpoint').textContent = info.ollama_endpoint;
+  $('about-overlay').classList.remove('hidden');
+});
+$('btn-close-about').addEventListener('click', () => $('about-overlay').classList.add('hidden'));
+$('about-overlay').addEventListener('click', event => {
+  if (event.target === $('about-overlay')) $('about-overlay').classList.add('hidden');
+});
+
 // ── Ollama status ──────────────────────────────────────────────
 async function checkOllama() {
   const status = await window.pywebview.api.get_ollama_status();
@@ -1943,9 +2254,11 @@ async function init() {
   applyTheme();
 
   S.models = await window.pywebview.api.get_models();
+  S.profiles = await window.pywebview.api.get_agent_profiles();
   S.chats  = await window.pywebview.api.get_chats();
 
   renderChats();
+  renderProfileSelector('default');
   await checkOllama();
 
   // Auto-open most recent chat

@@ -8,18 +8,28 @@ import json
 import sqlite3
 import time
 import uuid
+from contextlib import contextmanager
+from collections.abc import Iterator
 from onprem_rag.config import ROOT
 
 DB_PATH = ROOT / "data" / "chats.db"
 
 
-def _conn() -> sqlite3.Connection:
+@contextmanager
+def _conn() -> Iterator[sqlite3.Connection]:
+    """Yield a configured connection and always release its file handle."""
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = sqlite3.connect(str(DB_PATH), check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL")
     conn.execute("PRAGMA foreign_keys=ON")
-    return conn
+    try:
+        yield conn
+    except Exception:
+        conn.rollback()
+        raise
+    finally:
+        conn.close()
 
 
 def init_db():
@@ -29,10 +39,17 @@ def init_db():
                 id         TEXT PRIMARY KEY,
                 name       TEXT NOT NULL DEFAULT 'New Chat',
                 model      TEXT NOT NULL DEFAULT 'qwen2.5:7b',
+                agent_profile_id TEXT NOT NULL DEFAULT 'default',
                 created_at REAL NOT NULL,
                 updated_at REAL NOT NULL
             )
         """)
+        chat_cols = [r[1] for r in conn.execute("PRAGMA table_info(chats)").fetchall()]
+        if "agent_profile_id" not in chat_cols:
+            conn.execute(
+                "ALTER TABLE chats ADD COLUMN agent_profile_id "
+                "TEXT NOT NULL DEFAULT 'default'"
+            )
         conn.execute("""
             CREATE TABLE IF NOT EXISTS messages (
                 id         TEXT PRIMARY KEY,
@@ -64,21 +81,45 @@ def init_db():
             )
         """)
         conn.execute("CREATE INDEX IF NOT EXISTS idx_attach_chat ON attachments(chat_id)")
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS agent_profiles (
+                id            TEXT PRIMARY KEY,
+                name          TEXT NOT NULL,
+                description   TEXT NOT NULL DEFAULT '',
+                instructions  TEXT NOT NULL,
+                fallback      TEXT NOT NULL,
+                created_at    REAL NOT NULL,
+                updated_at    REAL NOT NULL
+            )
+        """)
         conn.commit()
 
 
 # ── Chats ─────────────────────────────────────────────────────────────────────
 
-def create_chat(name: str = "New Chat", model: str = "qwen2.5:7b") -> dict:
+def create_chat(
+    name: str = "New Chat",
+    model: str = "qwen2.5:7b",
+    agent_profile_id: str = "default",
+) -> dict:
     chat_id = str(uuid.uuid4())
     now = time.time()
     with _conn() as conn:
         conn.execute(
-            "INSERT INTO chats VALUES (?,?,?,?,?)",
-            (chat_id, name, model, now, now),
+            "INSERT INTO chats "
+            "(id, name, model, agent_profile_id, created_at, updated_at) "
+            "VALUES (?,?,?,?,?,?)",
+            (chat_id, name, model, agent_profile_id, now, now),
         )
         conn.commit()
-    return {"id": chat_id, "name": name, "model": model, "created_at": now, "updated_at": now}
+    return {
+        "id": chat_id,
+        "name": name,
+        "model": model,
+        "agent_profile_id": agent_profile_id,
+        "created_at": now,
+        "updated_at": now,
+    }
 
 
 def get_chats() -> list:
@@ -93,13 +134,23 @@ def get_chat(chat_id: str) -> dict | None:
     return dict(row) if row else None
 
 
-def update_chat(chat_id: str, name: str | None = None, model: str | None = None):
+def update_chat(
+    chat_id: str,
+    name: str | None = None,
+    model: str | None = None,
+    agent_profile_id: str | None = None,
+):
     now = time.time()
     with _conn() as conn:
         if name is not None:
             conn.execute("UPDATE chats SET name=?, updated_at=? WHERE id=?", (name, now, chat_id))
         if model is not None:
             conn.execute("UPDATE chats SET model=?, updated_at=? WHERE id=?", (model, now, chat_id))
+        if agent_profile_id is not None:
+            conn.execute(
+                "UPDATE chats SET agent_profile_id=?, updated_at=? WHERE id=?",
+                (agent_profile_id, now, chat_id),
+            )
         conn.commit()
 
 

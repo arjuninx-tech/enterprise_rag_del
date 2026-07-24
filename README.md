@@ -7,6 +7,8 @@
 Ask questions across PDFs, Word files, text, and Markdown without sending them
 to a hosted AI API.
 
+[Project repository](https://github.com/arjuninx-tech/enterprise-rag-ai)
+
 [![Python 3.10+](https://img.shields.io/badge/Python-3.10%2B-blue)](https://python.org)
 [![Ollama](https://img.shields.io/badge/LLM-Ollama-black)](https://ollama.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -22,6 +24,7 @@ to a hosted AI API.
 - Builds a persistent ChromaDB index from local documents
 - Streams answers with source-document citations
 - Supports PDF, DOCX, TXT, Markdown, and per-chat attachments
+- Supports saved Agent Profiles for configurable expertise and response behavior
 - Persists chats and extracted attachments in local SQLite
 - Runs as a native PyWebView window or in a browser
 - Includes an ISO 9001 sample use case, while remaining domain-agnostic
@@ -143,6 +146,8 @@ Changing the embedding model requires rebuilding the knowledge base.
   request, but untrusted document parsing should still be treated cautiously.
 
 See [SECURITY.md](SECURITY.md) for reporting and deployment guidance.
+Runtime and model license references are listed in
+[THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 ## Current limitations
 

@@ -19,9 +19,8 @@ from onprem_rag.config import (
 from onprem_rag.services.prompts import (
     build_rag_prompt,
     build_prompt_with_attachments,
-    NOT_FOUND_RESPONSE,
-    SYSTEM_PROMPT,
-    ATTACHMENT_SYSTEM_PROMPT,
+    build_system_prompt,
+    profile_fallback,
 )
 from onprem_rag.utils.logger import log_question, log_error
 
@@ -160,7 +159,13 @@ def retrieve(question: str) -> dict:
 
 # ── Streaming ask ─────────────────────────────────────────────────────────────
 
-def ask_stream(question, chunks=None, model=None, attached_context: str = ""):
+def ask_stream(
+    question,
+    chunks=None,
+    model=None,
+    attached_context: str = "",
+    agent_profile: dict | None = None,
+):
     """
     Stream an LLM answer.
 
@@ -177,6 +182,7 @@ def ask_stream(question, chunks=None, model=None, attached_context: str = ""):
     active_model = model or LLM_MODEL
     result_holder = {}
     has_attachments = bool(attached_context)
+    fallback_response = profile_fallback(agent_profile)
 
     def _run():
         if not question:
@@ -216,18 +222,18 @@ def ask_stream(question, chunks=None, model=None, attached_context: str = ""):
                 return
 
         if not resolved_chunks and not has_attachments:
-            yield NOT_FOUND_RESPONSE
-            log_question(question, NOT_FOUND_RESPONSE, [], found=False)
-            result_holder.update({"answer": NOT_FOUND_RESPONSE, "sources": [], "found": False, "error": None})
+            yield fallback_response
+            log_question(question, fallback_response, [], found=False)
+            result_holder.update({"answer": fallback_response, "sources": [], "found": False, "error": None})
             return
 
         # ── Build prompt ───────────────────────────────────────────────────────
         if has_attachments:
             prompt        = build_prompt_with_attachments(question, attached_context, resolved_chunks)
-            active_system = ATTACHMENT_SYSTEM_PROMPT
+            active_system = build_system_prompt(agent_profile)
         else:
             prompt        = build_rag_prompt(question, resolved_chunks)
-            active_system = SYSTEM_PROMPT
+            active_system = build_system_prompt(agent_profile)
 
         import time
         gen_start = time.time()
@@ -261,12 +267,12 @@ def ask_stream(question, chunks=None, model=None, attached_context: str = ""):
 
         answer_lower = full_answer.lower()
         not_found = (
-            NOT_FOUND_RESPONSE.lower() in answer_lower
+            fallback_response.lower() in answer_lower
             or "not found in" in answer_lower
         )
         found = not not_found
         sources = _format_sources(resolved_chunks) if found else []
-        final_answer = full_answer if found else NOT_FOUND_RESPONSE
+        final_answer = full_answer if found else fallback_response
         log_question(question, final_answer, sources, found=found)
         result_holder.update({
             "answer": final_answer,

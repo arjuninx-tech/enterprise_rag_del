@@ -15,6 +15,15 @@ from pathlib import Path
 
 import webview
 
+from onprem_rag import __version__
+from onprem_rag.config import DOCS_PATH, EMBED_MODEL, OLLAMA_BASE_URL
+from onprem_rag.models.agent_profile_store import (
+    create_profile,
+    delete_profile,
+    get_profile,
+    list_profiles,
+    update_profile,
+)
 from onprem_rag.models.chat_store import (
     add_message,
     create_chat,
@@ -25,7 +34,6 @@ from onprem_rag.models.chat_store import (
     init_db,
     update_chat,
 )
-from onprem_rag.config import DOCS_PATH
 from onprem_rag.models.attachment_store import (
     attach_document,
     get_documents,
@@ -77,8 +85,12 @@ class Api:
     def get_chats(self):
         return get_chats()
 
-    def create_chat(self, model: str = "qwen2.5:7b") -> dict:
-        return create_chat(model=model)
+    def create_chat(
+        self,
+        model: str = "qwen2.5:7b",
+        agent_profile_id: str = "default",
+    ) -> dict:
+        return create_chat(model=model, agent_profile_id=agent_profile_id)
 
     def rename_chat(self, chat_id: str, name: str) -> dict:
         update_chat(chat_id, name=name.strip() or "New Chat")
@@ -88,12 +100,45 @@ class Api:
         update_chat(chat_id, model=model)
         return {"ok": True}
 
+    def set_chat_agent_profile(self, chat_id: str, profile_id: str) -> dict:
+        profile = get_profile(profile_id)
+        update_chat(chat_id, agent_profile_id=profile["id"])
+        return {"ok": True, "profile": profile}
+
     def delete_chat(self, chat_id: str) -> dict:
         delete_chat(chat_id)
         return {"ok": True}
 
     def get_messages(self, chat_id: str) -> list:
         return get_messages(chat_id)
+
+    # Agent profiles
+
+    def get_agent_profiles(self) -> list:
+        return list_profiles()
+
+    def create_agent_profile(
+        self,
+        name: str,
+        description: str,
+        instructions: str,
+        fallback: str,
+    ) -> dict:
+        return create_profile(name, description, instructions, fallback)
+
+    def update_agent_profile(
+        self,
+        profile_id: str,
+        name: str,
+        description: str,
+        instructions: str,
+        fallback: str,
+    ) -> dict:
+        return update_profile(profile_id, name, description, instructions, fallback)
+
+    def delete_agent_profile(self, profile_id: str) -> dict:
+        delete_profile(profile_id)
+        return {"ok": True}
 
     # ── Models ────────────────────────────────────────────────────────────────
 
@@ -118,6 +163,9 @@ class Api:
         chat = get_chat(chat_id)
         if not chat:
             return {"error": "Chat not found"}
+        # Snapshot the profile before starting the worker so a concurrent edit
+        # cannot change the behavior of an answer already being generated.
+        agent_profile = get_profile(chat.get("agent_profile_id", "default"))
 
         def _stream():
             try:
@@ -153,8 +201,13 @@ class Api:
                 else:
                     chunks = ret.get("chunks") if not ret.get("collection_empty") else None
 
-                gen = ask_stream(content, chunks=chunks, model=model,
-                                 attached_context=attached_ctx)
+                gen = ask_stream(
+                    content,
+                    chunks=chunks,
+                    model=model,
+                    attached_context=attached_ctx,
+                    agent_profile=agent_profile,
+                )
 
                 for token in gen:
                     self._emit("stream:token", {"id": msg_id, "token": token})
@@ -174,6 +227,9 @@ class Api:
                         "gen_time":     result.get("gen_time"),
                         "token_count":  result.get("token_count"),
                         "tokens_per_sec": result.get("tokens_per_sec"),
+                        # Retain the effective profile with the answer for local
+                        # auditability even if that profile is edited later.
+                        "agent_profile": agent_profile,
                     },
                 )
 
@@ -266,6 +322,21 @@ class Api:
             return {"running": True}
         except Exception:
             return {"running": False}
+
+    def get_app_info(self) -> dict:
+        return {
+            "name": "On-Prem RAG Assistant",
+            "version": __version__,
+            "repository": "https://github.com/arjuninx-tech/enterprise-rag-ai",
+            "third_party_notices": (
+                "https://github.com/arjuninx-tech/enterprise-rag-ai/"
+                "blob/main/THIRD_PARTY_NOTICES.md"
+            ),
+            "license": "MIT",
+            "runtime": "Ollama",
+            "ollama_endpoint": OLLAMA_BASE_URL,
+            "embedding_model": EMBED_MODEL,
+        }
 
 
 # ── Loading screen shown immediately on launch ────────────────────────────────

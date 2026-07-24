@@ -21,6 +21,10 @@ dependencies = [
     "flask>=3.0,<4",
 ]
 
+[project.urls]
+Repository = "https://github.com/arjuninx-tech/enterprise-rag-ai"
+Issues = "https://github.com/arjuninx-tech/enterprise-rag-ai/issues"
+
 [project.optional-dependencies]
 dev = [
     "pytest>=8,<9",

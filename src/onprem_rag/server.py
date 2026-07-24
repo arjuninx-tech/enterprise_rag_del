@@ -183,9 +183,14 @@ _WEB_API_METHODS = {
     "create_chat",
     "rename_chat",
     "set_chat_model",
+    "set_chat_agent_profile",
     "delete_chat",
     "get_messages",
     "get_models",
+    "get_agent_profiles",
+    "create_agent_profile",
+    "update_agent_profile",
+    "delete_agent_profile",
     "pull_model",
     "send_message",
     "get_attached_files",
@@ -194,6 +199,7 @@ _WEB_API_METHODS = {
     "get_kb_stats",
     "rebuild_kb",
     "get_ollama_status",
+    "get_app_info",
 }
 
 

@@ -10,6 +10,8 @@ All notable changes will be documented here.
 - Add API allowlisting and upload validation.
 - Preserve original attachment filenames.
 - Add retrieval distance filtering, tests, CI, and community files.
+- Add persistent Agent Profiles with per-chat selection and JSON import/export.
+- Add an About view with runtime, model, version, repository, and license details.
 
 ## [0.1.0] - 2026-07-23
 
